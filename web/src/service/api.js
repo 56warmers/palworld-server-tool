@@ -42,6 +42,48 @@ class ApiService extends Service {
     const { adminPlayerUid } = param;
     return this.fetch(`/api/guild/${adminPlayerUid}`).get().json();
   }
+
+  async getWhitelist() {
+    return this.fetch(`/api/whitelist`).get().json();
+  }
+
+  async addWhitelist(param) {
+    let data = param;
+    return this.fetch(`/api/whitelist`).post(data).json();
+  }
+
+  async removeWhitelist(param) {
+    let data = param;
+    return this.fetch(`/api/whitelist`).delete(data).json();
+  }
+
+  async putWhitelist(param) {
+    let data = param;
+    return this.fetch(`/api/whitelist`).put(data).json();
+  }
+
+  async getRconCommands() {
+    return this.fetch(`/api/rcon`).get().json();
+  }
+
+  async sendRconCommand(param) {
+    let data = param;
+    return this.fetch(`/api/rcon/send`).post(data).json();
+  }
+
+  async addRconCommand(param) {
+    let data = param;
+    return this.fetch(`/api/rcon`).post(data).json();
+  }
+
+  async putRconCommand(uuid, param) {
+    let data = param;
+    return this.fetch(`/api/rcon/${uuid}`).put(data).json();
+  }
+
+  async removeRconCommand(uuid) {
+    return this.fetch(`/api/rcon/${uuid}`).delete().json();
+  }
 }
 
 export default ApiService;

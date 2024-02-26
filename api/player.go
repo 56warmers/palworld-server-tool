@@ -160,3 +160,103 @@ func banPlayer(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
+
+// addWhite godoc
+//
+//	@Summary		Add White List
+//	@Description	Add White List
+//	@Tags			Player
+//	@Accept			json
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Param			player_uid	path		string	true	"Player UID"
+//
+//	@Success		200			{object}	SuccessResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		401			{object}	ErrorResponse
+//	@Router			/api/whitelist [post]
+func addWhite(c *gin.Context) {
+	var player database.PlayerW
+	if err := c.ShouldBindJSON(&player); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := service.AddWhitelist(database.GetDB(), player); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// listWhite godoc
+//
+//	@Summary		List White List
+//	@Description	List White List
+//	@Tags			Player
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	[]database.PlayerW
+//	@Failure		400	{object}	ErrorResponse
+//	@Router			/api/whitelist [get]
+func listWhite(c *gin.Context) {
+	players, err := service.ListWhitelist(database.GetDB())
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, players)
+}
+
+// removeWhite godoc
+//
+//	@Summary		Remove White List
+//	@Description	Remove White List
+//	@Tags			Player
+//	@Accept			json
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Param			player_uid	path		string	true	"Player UID"
+//
+//	@Success		200			{object}	SuccessResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		401			{object}	ErrorResponse
+//	@Router			/api/whitelist [delete]
+func removeWhite(c *gin.Context) {
+	var player database.PlayerW
+	if err := c.ShouldBindJSON(&player); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := service.RemoveWhitelist(database.GetDB(), player); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// putWhite godoc
+//
+//	@Summary		Put White List
+//	@Description	Put White List
+//	@Tags			Player
+//	@Accept			json
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Param			players	body		[]database.PlayerW	true	"Players"
+//
+//	@Success		200		{object}	SuccessResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Router			/api/whitelist [put]
+func putWhite(c *gin.Context) {
+	var players []database.PlayerW
+	if err := c.ShouldBindJSON(&players); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := service.PutWhitelist(database.GetDB(), players); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}

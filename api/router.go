@@ -14,6 +14,10 @@ type SuccessResponse struct {
 	Success bool `json:"success"`
 }
 
+type MessageResponse struct {
+	Message string `json:"message"`
+}
+
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
@@ -68,6 +72,16 @@ func RegisterRouter() *gin.Engine {
 		authGroup.POST("/player/:player_uid/ban", banPlayer)
 		authGroup.PUT("/guild", putGuilds)
 		authGroup.POST("/sync", syncData)
+		authGroup.GET("/whitelist", listWhite)
+		authGroup.POST("/whitelist", addWhite)
+		authGroup.DELETE("/whitelist", removeWhite)
+		authGroup.PUT("/whitelist", putWhite)
+		authGroup.GET("/rcon", listRconCommand)
+		authGroup.POST("/rcon", addRconCommand)
+		authGroup.POST("/rcon/import", importRconCommands)
+		authGroup.POST("/rcon/send", sendRconCommand)
+		authGroup.PUT("/rcon/:uuid", putRconCommand)
+		authGroup.DELETE("/rcon/:uuid", removeRconCommand)
 	}
 
 	return r

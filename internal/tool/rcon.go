@@ -6,6 +6,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/zaigie/palworld-server-tool/service"
+	"go.etcd.io/bbolt"
+
 	"github.com/spf13/viper"
 	"github.com/zaigie/palworld-server-tool/internal/database"
 	"github.com/zaigie/palworld-server-tool/internal/executor"
@@ -23,6 +26,16 @@ func executeCommand(command string) (*executor.Executor, string, error) {
 
 	response, err := exec.Execute(command)
 	return exec, response, err
+}
+
+func CustomCommand(command string) (string, error) {
+	exec, response, err := executeCommand(command)
+	if err != nil {
+		return "", err
+	}
+	defer exec.Close()
+
+	return response, nil
 }
 
 func Info() (map[string]string, error) {
@@ -96,6 +109,38 @@ func ShowPlayers() ([]database.PlayerRcon, error) {
 	}
 
 	return playersRcon, nil
+}
+
+func CheckAndKickPlayers(db *bbolt.DB, players []database.PlayerRcon) error {
+	whitelist, err := service.ListWhitelist(db)
+	if err != nil {
+		return errors.New(err.Error())
+	}
+	for _, player := range players {
+		if !isPlayerWhitelisted(player, whitelist) {
+			// 优先使用SteamId进行操作，如果没有提供，则使用PlayerUid
+			identifier := player.SteamId
+			if identifier == "" {
+				identifier = player.PlayerUid
+			}
+			if err := KickPlayer(identifier); err != nil {
+				logger.Warnf("Kicked %s fail, %s \n", player.Nickname, err)
+			} else {
+				logger.Warnf("Kicked %s successful \n", player.Nickname)
+			}
+		}
+	}
+	return nil
+}
+
+func isPlayerWhitelisted(player database.PlayerRcon, whitelist []database.PlayerW) bool {
+	for _, whitelistedPlayer := range whitelist {
+		if (player.PlayerUid != "" && player.PlayerUid == whitelistedPlayer.PlayerUID) ||
+			(player.SteamId != "" && player.SteamId == whitelistedPlayer.SteamID) {
+			return true
+		}
+	}
+	return false
 }
 
 func KickPlayer(steamID string) error {

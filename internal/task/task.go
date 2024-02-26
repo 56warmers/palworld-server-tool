@@ -3,6 +3,8 @@ package task
 import (
 	"time"
 
+	"github.com/zaigie/palworld-server-tool/internal/database"
+
 	"github.com/go-co-op/gocron/v2"
 	"github.com/spf13/viper"
 	"github.com/zaigie/palworld-server-tool/internal/logger"
@@ -24,6 +26,19 @@ func RconSync(db *bbolt.DB) {
 		logger.Error(err)
 	}
 	logger.Info("Rcon sync done\n")
+
+	kickInterval := viper.GetBool("manage.kick_non_whitelist")
+	if kickInterval {
+		go CheckAndKickPlayers(db, playersRcon)
+	}
+}
+
+func CheckAndKickPlayers(db *bbolt.DB, players []database.PlayerRcon) {
+	err := tool.CheckAndKickPlayers(db, players)
+	if err != nil {
+		logger.Error(err)
+	}
+	logger.Info("Check whitelist done\n")
 }
 
 func SavSync() {

@@ -1,7 +1,7 @@
 <h1 align='center'>幻兽帕鲁服务器管理工具</h1>
 
 <p align="center">
-   <strong>简体中文</strong> | <a href="/README.en.md">English</a>
+   <strong>简体中文</strong> | <a href="/README.en.md">English</a> | <a href="/README.ja.md">日本語</a>
 </p>
 
 <p align='center'>
@@ -22,12 +22,11 @@
 >
 > 当然深色模式也安排得妥妥的～
 
-基于 `Level.sav` 存档文件解析实现的功能及路线图：
+基于 `Level.sav` 存档文件解析实现的功能：
 
 - [x] 完整玩家数据
 - [x] 玩家帕鲁数据
 - [x] 公会数据
-- [ ] 玩家背包数据
 
 基于官方提供的 RCON 命令（仅服务器可用的）实现功能：
 
@@ -37,9 +36,21 @@
 - [x] 游戏内广播
 - [x] 平滑关闭服务器并广播消息
 
+工具额外提供的功能：
+
+- [x] 白名单管理
+- [x] 自定义 RCON 命令并执行
+
 本工具使用 bbolt 单文件存储，将 RCON 和 Level.sav 文件的数据通过定时任务获取并保存，提供简单的可视化界面和 REST 接口和便于管理与开发。
 
 由于维护开发人员较少，虽有心但力不足，欢迎各前端和后端甚至数据工程师来提交 PR！
+
+> [!NOTE]
+> 如果您需要幻兽帕鲁服务器&工具搭建交流，或者**需要闭源付费定制功能开发**，如：多服务器管理、服务器注入反作弊、可视化修改存档等，请加群或 QQ 交流
+
+幻兽帕鲁服务器管理交流：<a target="_blank" href="https://qm.qq.com/cgi-bin/qm/qr?k=RkItz42aIvppN716Tdlpni_gSpnYasxF&jump_from=webapi&authKey=PLbIHENUObGLnW4s5476OnenRVcUNBV79g9zd0CEi5kpddfdooAsoU/SeoEdfGWq"><img border="0" src="https://pub.idqqimg.com/wpa/images/group.png" alt="幻兽帕鲁服务器管理" title="幻兽帕鲁服务器管理"></a>
+
+![加QQ群](./docs/img/add_group.jpg)
 
 ## 功能截图
 
@@ -78,9 +89,7 @@ AdminPassword=...,...,RCONEnabled=true,RCONPort=25575
 - [Sealos 一键部署](#sealos-一键部署)
 - [文件部署](#文件部署)
   - [Linux](#linux)
-    - [pst-agent 部署](./README.agent.md#linux)
   - [Windows](#windows)
-    - [pst-agent 部署](./README.agent.md#windows)
 - [Docker 部署](#docker-部署)
   - [单体部署](#单体部署)
   - [Agent 部署](#agent-部署)
@@ -89,7 +98,7 @@ AdminPassword=...,...,RCONEnabled=true,RCONPort=25575
 
 请确保前提 [开启私服 RCON](#如何开启私服-rcon)
 
-> 解析 `Level.sav` 存档的任务需要在短时间（<20s）耗费一定的系统内存（1GB~3GB），这部分内存会在执行完解析任务后释放，因此你至少需要确保你的服务器有充足的内存。若不满足可使用如下等方式
+> 解析 `Level.sav` 存档的任务需要在短时间（<20s）耗费一定的系统内存（1GB~3GB），这部分内存会在执行完解析任务后释放，因此你至少需要确保你的服务器有充足的内存。
 
 这里**默认为将 pst 工具和游戏服务器放在同一台物理机上**，在一些情况下你可能不想要它们部署在同一机器上：
 
@@ -116,7 +125,6 @@ AdminPassword=...,...,RCONEnabled=true,RCONPort=25575
 请在以下地址下载最新版可执行文件
 
 - [Github Releases](https://github.com/zaigie/palworld-server-tool/releases)
-- [(国内) Gitee Releases](https://gitee.com/jokerwho/palworld-server-tool/releases)
 
 #### Linux
 
@@ -124,7 +132,7 @@ AdminPassword=...,...,RCONEnabled=true,RCONPort=25575
 
 ```bash
 # 下载 pst_{version}_{platform}_{arch}.tar.gz 文件并解压到 pst 目录
-mkdir -p pst && tar -xzf pst_v0.5.4_linux_x86_64.tar.gz -C pst
+mkdir -p pst && tar -xzf pst_v0.5.6_linux_x86_64.tar.gz -C pst
 ```
 
 ##### 配置
@@ -141,21 +149,45 @@ mkdir -p pst && tar -xzf pst_v0.5.4_linux_x86_64.tar.gz -C pst
    关于其中的 `decode_path`，一般就是解压后的 pst 目录加上 `sav_cli` ，如果不知道绝对路径，在终端执行 `pwd` 即可
 
    ```yaml
-   web: # web 相关配置
-     password: "" # web 管理模式密码
-     port: 8080 # web 服务端口
-     tls: false # 是否开启 TLS
-     cert_path: "" # Cert 文件路径
-     key_path: "" # Key 文件路径
-   rcon: # RCON 相关配置
-     address: "127.0.0.1:25575" # RCON 地址
-     password: "" # 设置的 AdminPassword
-     timeout: 5 # 请求 RCON 超时时间，推荐 <= 5
-     sync_interval: 60 # 定时向 RCON 服务获取玩家在线情况的间隔，单位秒
-   save: # 存档文件解析相关配置
-     path: "/path/to/you/Level.sav" # 存档文件路径
-     decode_path: "/path/to/your/sav_cli" # 存档解析工具路径，一般和 pst 在同一目录
-     sync_interval: 120 # 定时从存档获取数据的间隔，单位秒，推荐 >= 120
+   # WebUI 设置
+   web:
+     # WebUI 管理员密码
+     password: ""
+     # WebUI 访问端口
+     port: 8080
+     # 是否开启使用 HTTPS TLS 访问
+     tls: false
+     # TLS Cert 如果开启使用 HTTPS 请输入证书文件路径
+     cert_path: ""
+     # TLS Key 如果开启使用 HTTPS 请输入证书密钥文件路径
+     key_path: ""
+     # 若开启 HTTPS 访问请填写你的 HTTPS 证书绑定的域名 eg. https://yourdomain.com
+     public_url: ""
+
+   # RCON 相关设置
+   rcon:
+     # RCON 的地址和端口
+     address: "127.0.0.1:25575"
+     # 服务 端设置的 RCON AdminPassword
+     password: ""
+     # RCON 通信超时时间，推荐 <= 5
+     timeout: 5
+     # 定时向 RCON 服务获取玩家在线情况的间隔，单位秒
+     sync_interval: 60
+
+   # sav_cli Config 存档文件解析相关配置
+   save:
+     # 存档文件路径
+     path: "/path/to/your/Pal/Saved"
+     # Sav_cli Path 存档解析工具路径，一般和 pst 在同一目录
+     decode_path: "/path/to/your/sav_cli"
+     # Sav Decode Interval Sec 定时从存档获取数据的间隔，单位秒，推荐 >= 120
+     sync_interval: 120
+
+   # Automation Config 自动化管理相关
+   manage:
+     # 玩家不在白名单是否自动踢出
+     kick_non_whitelist: false
    ```
 
 ##### 运行
@@ -201,7 +233,7 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 
 ##### 下载解压
 
-解压 `pst_v0.5.4_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
+解压 `pst_v0.5.6_windows_x86_64.zip` 到任意目录（推荐命名文件夹目录名称为 `pst`）
 
 ##### 配置
 
@@ -219,21 +251,45 @@ kill $(ps aux | grep 'pst' | awk '{print $2}') | head -n 1
 > 还有比较重要的是，请确保 `config.yaml` 文件为 **ANSI 编码**，其它编码格式将会导致路径错误等问题！！
 
 ```yaml
-web: # web 相关配置
-  password: "" # web 管理模式密码
-  port: 8080 # web 服务端口
-  tls: false # 是否开启 TLS
-  cert_path: "" # Cert 文件路径
-  key_path: "" # Key 文件路径
-rcon: # RCON 相关配置
-  address: "127.0.0.1:25575" # RCON 地址
-  password: "" # 设置的 AdminPassword
-  timeout: 5 # 请求 RCON 超时时间，推荐 <= 5
-  sync_interval: 60 # 定时向 RCON 服务获取玩家在线情况的间隔，单位秒
-save: # 存档文件解析相关配置
-  path: "C:\\path\\to\\you\\Level.sav" # 存档文件路径
-  decode_path: "C:\\path\\to\\your\\sav_cli.exe" # 存档解析工具路径，一般和 pst 在同一目录
-  sync_interval: 120 # 定时从存档获取数据的间隔，单位秒，推荐 >= 120
+# WebUI 设置
+web:
+  # WebUI 管理员密码
+  password: ""
+  # WebUI 访问端口
+  port: 8080
+  # 是否开启使用 HTTPS TLS 访问
+  tls: false
+  # TLS Cert 如果开启使用 HTTPS 请输入证书文件路径
+  cert_path: ""
+  # TLS Key 如果开启使用 HTTPS 请输入证书密钥文件路径
+  key_path: ""
+  # 若开启 HTTPS 访问请填写你的 HTTPS 证书绑定的域名 eg. https://yourdomain.com
+  public_url: ""
+
+# RCON 相关设置
+rcon:
+  # RCON 的地址和端口
+  address: "127.0.0.1:25575"
+  # 服务 端设置的 RCON AdminPassword
+  password: ""
+  # RCON 通信超时时间，推荐 <= 5
+  timeout: 5
+  # 定时向 RCON 服务获取玩家在线情况的间隔，单位秒
+  sync_interval: 60
+
+# sav_cli Config 存档文件解析相关配置
+save:
+  # 存档文件路径
+  path: "C:\\path\\to\\your\\Pal\\Saved"
+  # Sav_cli Path 存档解析工具路径，一般和 pst 在同一目录
+  decode_path: "C:\\path\\to\\your\\sav_cli.exe"
+  # Sav Decode Interval Sec 定时从存档获取数据的间隔，单位秒，推荐 >= 120
+  sync_interval: 120
+
+# Automation Config 自动化管理相关
+manage:
+  # 玩家不在白名单是否自动踢出
+  kick_non_whitelist: false
 ```
 
 ##### 运行
@@ -277,14 +333,17 @@ save: # 存档文件解析相关配置
 只需要一个容器，将游戏存档目录映射至容器内，与游戏服务器在同一物理主机上运行。
 ##### ① docker run 方式（推荐）
 
+> 注意:使用交换分区,可能导致程序性能下降,建议仅在内存不足时使用
+
 ```bash
 docker run -d --name pst \
 -p 8080:8080 \
--v /path/to/your/Pal/Saved/SaveGames/0/E8F71231A51246429C7CCCCD51320C22:/game \
+-m 256M --memory-swap=4G `# 可选参数 设置可用内存为256M 交换分区为4G` \
+-v /path/to/your/Pal/Saved:/game \
 -e WEB__PASSWORD="your password" \
 -e RCON__ADDRESS="172.17.0.1:25575" \
 -e RCON__PASSWORD="your password" \
--e SAVE__PATH="/game/Level.sav" \
+-e SAVE__PATH="/game" \
 -e SAVE__SYNC_INTERVAL=120 \
 jokerwho/palworld-server-tool:latest
 ```
@@ -353,19 +412,20 @@ touch pst.db
 > [!WARNING]
 > 注意区分单个和多个下划线，若需修改最好请复制下表变量名！
 
-|        变量名         |      默认值       | 类型 |                         说明                         |
-| :-------------------: | :---------------: | :--: | :--------------------------------------------------: |
-|    WEB\_\_PASSWORD    |        ""         | 文本 |               Web 界面的管理员模式密码               |
-|      WEB\_\_PORT      |       8080        | 数字 |     **若非必要不建议修改，而是更改容器映射端口**     |
-|                       |                   |      |                                                      |
-|    RCON\_\_ADDRESS    | "127.0.0.1:25575" | 文本 | RCON 服务对应的地址，可以用容器网络 172.17.0.1:25575 |
-|   RCON\_\_PASSWORD    |        ""         | 文本 |           服务器配置文件中的 AdminPassword           |
-|    RCON\_\_TIMEOUT    |         5         | 数字 |             单个请求 RCON 服务的超时时间             |
-| RCON\_\_SYNC_INTERVAL |        60         | 数字 |        请求 RCON 服务器同步玩家在线数据的间隔        |
-|                       |                   |      |                                                      |
-|     SAVE\_\_PATH      |        ""         | 文本 |    游戏存档所在路径 **请务必填写为容器内的路径**     |
-|  SAVE\_\_DECODE_PATH  |  "/app/sav_cli"   | 文本 |    ⚠️ 容器内置，禁止修改，会导致存档解析工具错误     |
-| SAVE\_\_SYNC_INTERVAL |        600        | 数字 |                同步玩家存档数据的间隔                |
+|            变量名            |      默认值       | 类型 |                         说明                         |
+| :--------------------------: | :---------------: | :--: | :--------------------------------------------------: |
+|       WEB\_\_PASSWORD        |        ""         | 文本 |               Web 界面的管理员模式密码               |
+|         WEB\_\_PORT          |       8080        | 数字 |     **若非必要不建议修改，而是更改容器映射端口**     |
+|                              |                   |      |                                                      |
+|       RCON\_\_ADDRESS        | "127.0.0.1:25575" | 文本 | RCON 服务对应的地址，可以用容器网络 172.17.0.1:25575 |
+|       RCON\_\_PASSWORD       |        ""         | 文本 |           服务器配置文件中的 AdminPassword           |
+|       RCON\_\_TIMEOUT        |         5         | 数字 |             单个请求 RCON 服务的超时时间             |
+|    RCON\_\_SYNC_INTERVAL     |        60         | 数字 |        请求 RCON 服务器同步玩家在线数据的间隔        |
+|                              |                   |      |                                                      |
+|         SAVE\_\_PATH         |        ""         | 文本 |    游戏存档所在路径 **请务必填写为容器内的路径**     |
+|     SAVE\_\_DECODE_PATH      |  "/app/sav_cli"   | 文本 |    ⚠️ 容器内置，禁止修改，会导致存档解析工具错误     |
+|    SAVE\_\_SYNC_INTERVAL     |        600        | 数字 |                同步玩家存档数据的间隔                |
+| MANAGE\_\_KICK_NON_WHITELIST |       false       | 布尔 |        当检测到玩家不在白名单却在线时自动踢出        |
 
 #### Agent 部署
 
@@ -379,11 +439,13 @@ touch pst.db
 
 ##### 先运行 agent 容器
 
+> 注意:使用交换分区,可能导致程序性能下降,建议仅在内存不足时使用
+
 ```bash
 docker run -d --name pst-agent \
 -p 8081:8081 \
--v /path/to/your/Pal/Saved/SaveGames/0/E8F71231A51246429C7CCCCD51320C22:/game \
--e SAV_FILE="/game/Level.sav" \
+-v /path/to/your/Pal/Saved:/game \
+-e SAV_FILE="/game" \
 jokerwho/palworld-server-tool-agent:latest
 ```
 
@@ -422,19 +484,21 @@ touch pst.db
 > [!WARNING]
 > 注意区分单个和多个下划线，若需修改最好请复制下表变量名！
 
-|        变量名         |      默认值       | 类型 |                                    说明                                     |
-| :-------------------: | :---------------: | :--: | :-------------------------------------------------------------------------: |
-|    WEB\_\_PASSWORD    |        ""         | 文本 |                          Web 界面的管理员模式密码                           |
-|      WEB\_\_PORT      |       8080        | 数字 |                **若非必要不建议修改，而是更改容器映射端口**                 |
-|                       |                   |      |                                                                             |
-|    RCON\_\_ADDRESS    | "127.0.0.1:25575" | 文本 |               RCON 服务对应的地址，一般为游戏服务器 IP:25575                |
-|   RCON\_\_PASSWORD    |        ""         | 文本 |                      服务器配置文件中的 AdminPassword                       |
-|    RCON\_\_TIMEOUT    |         5         | 数字 |                        单个请求 RCON 服务的超时时间                         |
-| RCON\_\_SYNC_INTERVAL |        60         | 数字 |                   请求 RCON 服务器同步玩家在线数据的间隔                    |
-|                       |                   |      |                                                                             |
-|     SAVE\_\_PATH      |        ""         | 文本 | pst-agent 所在服务地址，格式为<br> http://{游戏服务器 IP}:{Agent 端口}/sync |
-|  SAVE\_\_DECODE_PATH  |  "/app/sav_cli"   | 文本 |                ⚠️ 容器内置，禁止修改，会导致存档解析工具错误                |
-| SAVE\_\_SYNC_INTERVAL |        600        | 数字 |                           同步玩家存档数据的间隔                            |
+|            变量名            |      默认值       | 类型 |                                    说明                                     |
+| :--------------------------: | :---------------: | :--: | :-------------------------------------------------------------------------: |
+|       WEB\_\_PASSWORD        |        ""         | 文本 |                          Web 界面的管理员模式密码                           |
+|         WEB\_\_PORT          |       8080        | 数字 |                **若非必要不建议修改，而是更改容器映射端口**                 |
+|                              |                   |      |                                                                             |
+|       RCON\_\_ADDRESS        | "127.0.0.1:25575" | 文本 |               RCON 服务对应的地址，一般为游戏服务器 IP:25575                |
+|       RCON\_\_PASSWORD       |        ""         | 文本 |                      服务器配置文件中的 AdminPassword                       |
+|       RCON\_\_TIMEOUT        |         5         | 数字 |                        单个请求 RCON 服务的超时时间                         |
+|    RCON\_\_SYNC_INTERVAL     |        60         | 数字 |                   请求 RCON 服务器同步玩家在线数据的间隔                    |
+|                              |                   |      |                                                                             |
+|         SAVE\_\_PATH         |        ""         | 文本 | pst-agent 所在服务地址，格式为<br> http://{游戏服务器 IP}:{Agent 端口}/sync |
+|     SAVE\_\_DECODE_PATH      |  "/app/sav_cli"   | 文本 |                ⚠️ 容器内置，禁止修改，会导致存档解析工具错误                |
+|    SAVE\_\_SYNC_INTERVAL     |        600        | 数字 |                           同步玩家存档数据的间隔                            |
+|                              |                   |      |                                                                             |
+| MANAGE\_\_KICK_NON_WHITELIST |       false       | 布尔 |                   当检测到玩家不在白名单却在线时自动踢出                    |
 
 #### 从 k8s-pod 同步存档
 
