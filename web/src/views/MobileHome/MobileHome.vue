@@ -12,6 +12,7 @@ import { NTag, NButton, useMessage, useDialog } from "naive-ui";
 import { useI18n } from "vue-i18n";
 import ApiService from "@/service/api";
 import dayjs from "dayjs";
+import palMap from "@/assets/pal.json";
 import skillMap from "@/assets/skill.json";
 import PlayerList from "./component/PlayerList.vue";
 import GuildList from "./component/GuildList.vue";
@@ -120,14 +121,26 @@ const getChooseGuild = (uid) => {
   getGuildInfo(uid);
 };
 
+const getPalName = (name) => {
+  const lowerName = name.toLowerCase();
+  return palMap[locale.value][lowerName]
+    ? palMap[locale.value][lowerName]
+    : name;
+};
+
 // 游戏用户的帕鲁列表分页，搜索
 const clickSearch = (searchValue) => {
   const pattern = /^\s*$|(\s)\1/;
   if (searchValue && !pattern.test(searchValue)) {
     playerPalsList.value = playerInfo.value.pals.filter((item) => {
       return (
-        item.skills.some((skill) => skill.includes(searchValue)) ||
-        item.typeName.includes(searchValue)
+        item.skills.some((skill) => {
+          return (
+            skillMap[locale.value][skill]
+              ? skillMap[locale.value][skill].name
+              : skill
+          ).includes(searchValue);
+        }) || getPalName(item.type).includes(searchValue)
       );
     });
   } else {
@@ -218,10 +231,6 @@ const handleBroadcast = async () => {
     showBroadcastModal.value = false;
     broadcastText.value = "";
   } else {
-    if (data.value?.error.includes("contain non-ascii")) {
-      message.error(t("message.broadcastasciierr"));
-      return;
-    }
     message.error(t("message.broadcastfail", { err: data.value?.error }));
   }
 };
@@ -363,7 +372,7 @@ onMounted(async () => {
         <n-tag type="default" size="small">{{
           serverInfo?.name
             ? `${serverInfo.name + " " + serverInfo.version}`
-            : "获取中..."
+            : $t("message.loading")
         }}</n-tag>
       </div>
       <n-space vertical>

@@ -1,6 +1,6 @@
 <script setup>
 import { ContentCopyFilled } from "@vicons/material";
-import { LogOut, Ban } from "@vicons/ionicons5";
+import { LogOut, Ban, Search } from "@vicons/ionicons5";
 import { CrownFilled } from "@vicons/antd";
 import dayjs from "dayjs";
 import { computed } from "vue";
@@ -16,6 +16,10 @@ const { t, locale } = useI18n();
 const message = useMessage();
 const dialog = useDialog();
 
+const isDarkMode = ref(
+  window.matchMedia("(prefers-color-scheme: dark)").matches
+);
+
 const isLogin = computed(() => userStore().getLoginInfo().isLogin);
 
 const props = defineProps(["playerInfo", "currentPlayerPalsList", "finished"]);
@@ -26,7 +30,7 @@ const finished = computed(() => props.finished);
 const emits = defineEmits(["onSearch"]);
 
 const handelPlayerAction = async (type) => {
-  if (!isLogin) {
+  if (!isLogin.value) {
     message.error($t("message.requireauth"));
     showLoginModal.value = true;
     return;
@@ -62,8 +66,8 @@ const handelPlayerAction = async (type) => {
 };
 
 const searchValue = ref("");
-const clickSearch = () => {
-  emits("onSearch", searchValue.value);
+const clickSearch = (input) => {
+  emits("onSearch", input);
 };
 
 // 查看帕鲁详情
@@ -110,10 +114,20 @@ const percentageHP = (hp, max_hp) => {
   return ((hp / max_hp) * 100).toFixed(2);
 };
 const getPalAvatar = (name) => {
-  return new URL(`../../../assets/pal/${name}.png`, import.meta.url).href;
+  const lowerName = name.toLowerCase();
+  return new URL(`../../../assets/pals/${lowerName}.png`, import.meta.url).href;
 };
-const getUnknowPalAvatar = () => {
-  return new URL("@/assets/pal/Unknown.png", import.meta.url).href;
+const getPalName = (name) => {
+  const lowerName = name.toLowerCase();
+  return palMap[locale.value][lowerName]
+    ? palMap[locale.value][lowerName]
+    : name;
+};
+const getUnknowPalAvatar = (is_boss = false) => {
+  if (is_boss) {
+    return new URL("@/assets/pals/boss_unknown.png", import.meta.url).href;
+  }
+  return new URL("@/assets/pals/unknown.png", import.meta.url).href;
 };
 </script>
 
@@ -121,7 +135,7 @@ const getUnknowPalAvatar = () => {
   <div class="player-detail">
     <n-layout :native-scrollbar="false">
       <!-- ban / kick -->
-      <div v-if="isLogin" class="pt-2 px-3 bg-transparent" position="absolute">
+      <div v-if="isLogin" class="pt-2 px-3" position="absolute">
         <n-flex justify="space-between">
           <n-button
             @click="handelPlayerAction('ban')"
@@ -266,25 +280,25 @@ const getUnknowPalAvatar = () => {
             }}</n-progress
           >
         </n-space>
-        <div class="flex w-full mt-5 border-b border-b-solid border-b-#eee">
-          <van-field
+        <div class="flex w-full mt-5">
+          <n-input
             v-model="searchValue"
             :placeholder="$t('input.searchPlaceholder')"
-            @update:model-value="clickSearch"
-            right-icon="search"
+            @update:value="clickSearch"
+            style="border: none"
           >
-          </van-field>
+            <template #suffix>
+              <n-icon>
+                <Search />
+              </n-icon>
+            </template>
+          </n-input>
         </div>
-        <van-list :finished="finished" finished-text="没有更多了">
-          <div
+        <n-list>
+          <n-list-item
             v-for="(pal, index) in currentPlayerPalsList"
             :key="pal"
             class="py-2"
-            :class="
-              index < currentPlayerPalsList.length - 1
-                ? 'border-b border-b-solid border-b-#eee'
-                : ''
-            "
             @click="showPalDetail(pal)"
           >
             <div class="flex justify-between items-center">
@@ -292,35 +306,38 @@ const getUnknowPalAvatar = () => {
                 class="bg-#c5c5c5 rounded-md"
                 :size="32"
                 :src="getPalAvatar(pal.type)"
-                :fallback-src="getUnknowPalAvatar()"
+                :fallback-src="getUnknowPalAvatar(pal.is_boss)"
               ></n-avatar>
               <div class="flex-1 flex items-center justify-between ml-3">
-                <van-tag
-                  plain
-                  :type="pal.gender == 'Male' ? 'primary' : 'danger'"
-                  >{{ pal.gender == "Male" ? "♂" : "♀" }}</van-tag
+                <n-tag
+                  size="small"
+                  :type="pal.gender == 'Male' ? 'primary' : 'warning'"
+                  >{{ pal.gender == "Male" ? "♂" : "♀" }}</n-tag
                 >
                 <span class="px-3 flex-1 line-clamp-1">{{
-                  palMap[locale][pal.type] ? palMap[locale][pal.type] : pal.type
+                  getPalName(pal.type)
                 }}</span>
                 <span>{{ "Lv." + pal.level }}</span>
               </div>
             </div>
             <div class="ml-11 mt-1 flex flex-wrap">
-              <van-tag
+              <n-tag
                 v-for="skill in pal.skills"
                 class="rounded-sm mr-2"
-                size="medium"
+                size="small"
                 :key="skill"
                 color="#fcf0e0"
                 text-color="#ee9b2f"
                 >{{
                   skillMap[locale][skill] ? skillMap[locale][skill].name : skill
-                }}</van-tag
+                }}</n-tag
               >
             </div>
-          </div>
-        </van-list>
+          </n-list-item>
+        </n-list>
+        <div v-if="finished" class="text-center pt-4 color-#999">
+          没有更多了
+        </div>
         <div class="h-10"></div>
       </n-card>
     </n-layout>
@@ -349,11 +366,7 @@ const getUnknowPalAvatar = () => {
       </n-tag>
     </template>
     <template #header>
-      {{
-        palMap[locale][palDetail.type]
-          ? palMap[locale][palDetail.type]
-          : palDetail.type
-      }}
+      {{ getPalName(palDetail.type) }}
     </template>
     <pal-detail :palDetail="palDetail"></pal-detail>
   </n-modal>

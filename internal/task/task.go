@@ -1,9 +1,13 @@
 package task
 
 import (
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/zaigie/palworld-server-tool/internal/database"
+	"github.com/zaigie/palworld-server-tool/internal/system"
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/spf13/viper"
@@ -15,15 +19,34 @@ import (
 
 var s gocron.Scheduler
 
+func BackupTask(db *bbolt.DB) {
+	logger.Info("Scheduling backup...\n")
+	path, err := tool.Backup()
+	if err != nil {
+		logger.Errorf("%v\n", err)
+		return
+	}
+	err = service.AddBackup(db, database.Backup{
+		BackupId: uuid.New().String(),
+		Path:     path,
+		SaveTime: time.Now(),
+	})
+	if err != nil {
+		logger.Errorf("%v\n", err)
+		return
+	}
+	logger.Infof("Auto backup to %s\n", path)
+}
+
 func RconSync(db *bbolt.DB) {
 	logger.Info("Scheduling Rcon sync...\n")
 	playersRcon, err := tool.ShowPlayers()
 	if err != nil {
-		logger.Error(err)
+		logger.Errorf("%v\n", err)
 	}
 	err = service.PutPlayersRcon(db, playersRcon)
 	if err != nil {
-		logger.Error(err)
+		logger.Errorf("%v\n", err)
 	}
 	logger.Info("Rcon sync done\n")
 
@@ -36,16 +59,16 @@ func RconSync(db *bbolt.DB) {
 func CheckAndKickPlayers(db *bbolt.DB, players []database.PlayerRcon) {
 	err := tool.CheckAndKickPlayers(db, players)
 	if err != nil {
-		logger.Error(err)
+		logger.Errorf("%v\n", err)
 	}
 	logger.Info("Check whitelist done\n")
 }
 
 func SavSync() {
 	logger.Info("Scheduling Sav sync...\n")
-	err := tool.ConversionLoading(viper.GetString("save.path"))
+	err := tool.Decode(viper.GetString("save.path"))
 	if err != nil {
-		logger.Error(err)
+		logger.Errorf("%v\n", err)
 	}
 	logger.Info("Sav sync done\n")
 }
@@ -55,6 +78,7 @@ func Schedule(db *bbolt.DB) {
 
 	rconSyncInterval := time.Duration(viper.GetInt("rcon.sync_interval"))
 	savSyncInterval := time.Duration(viper.GetInt("save.sync_interval"))
+	backupInterval := time.Duration(viper.GetInt("save.backup_interval"))
 
 	if rconSyncInterval > 0 {
 		go RconSync(db)
@@ -63,7 +87,7 @@ func Schedule(db *bbolt.DB) {
 			gocron.NewTask(RconSync, db),
 		)
 		if err != nil {
-			logger.Error(err)
+			logger.Errorf("%v\n", err)
 		}
 	}
 
@@ -74,8 +98,27 @@ func Schedule(db *bbolt.DB) {
 			gocron.NewTask(SavSync),
 		)
 		if err != nil {
+			logger.Errorf("%v\n", err)
+		}
+	}
+
+	if backupInterval > 0 {
+		go BackupTask(db)
+		_, err := s.NewJob(
+			gocron.DurationJob(backupInterval*time.Second),
+			gocron.NewTask(BackupTask, db),
+		)
+		if err != nil {
 			logger.Error(err)
 		}
+	}
+
+	_, err := s.NewJob(
+		gocron.DurationJob(300*time.Second),
+		gocron.NewTask(system.LimitCacheDir, filepath.Join(os.TempDir(), "palworldsav-"), 5),
+	)
+	if err != nil {
+		logger.Errorf("%v\n", err)
 	}
 
 	s.Start()
@@ -85,14 +128,14 @@ func Shutdown() {
 	s := getScheduler()
 	err := s.Shutdown()
 	if err != nil {
-		logger.Error(err)
+		logger.Errorf("%v\n", err)
 	}
 }
 
 func initScheduler() gocron.Scheduler {
 	s, err := gocron.NewScheduler()
 	if err != nil {
-		logger.Error(err)
+		logger.Errorf("%v\n", err)
 	}
 	return s
 }

@@ -13,6 +13,7 @@ import PalDetail from "./PalDetail.vue";
 import whitelistStore from "@/stores/model/whitelist.js";
 import playerToGuildStore from "@/stores/model/playerToGuild.js";
 import userStore from "@/stores/model/user";
+import palItems from "@/assets/items.json";
 
 const { t, locale } = useI18n();
 const PALWORLD_TOKEN = "palworld_token";
@@ -76,10 +77,7 @@ const createPlayerPalsColumns = () => {
               },
             },
             {
-              default: () =>
-                palMap[locale.value][row.type]
-                  ? palMap[locale.value][row.type]
-                  : row.type,
+              default: () => getPalName(row.type),
             }
           ),
         ];
@@ -124,7 +122,13 @@ const createPlayerPalsColumns = () => {
         value,
       })),
       filter(value, row) {
-        return ~row.skills.indexOf(value);
+        return row.skills.some((skill) => {
+          return (
+            skillMap[locale.value][skill]
+              ? skillMap[locale.value][skill].name
+              : skill
+          ).includes(value);
+        });
       },
     },
     {
@@ -151,6 +155,7 @@ watch(
     paginationReactive.page = 1;
     paginationReactive.pageSize = 10;
     searchValue.value = "";
+    mergeItems();
   }
 );
 
@@ -175,8 +180,13 @@ const clickSearch = () => {
   if (searchValue.value && !pattern.test(searchValue.value)) {
     currentPalsList.value = playerInfo?.value.pals.filter((item) => {
       return (
-        item.skills.some((skill) => skill.includes(searchValue.value)) ||
-        item.typeName.includes(searchValue.value)
+        item.skills.some((skill) => {
+          return (
+            skillMap[locale.value][skill]
+              ? skillMap[locale.value][skill].name
+              : skill
+          ).includes(searchValue.value);
+        }) || getPalName(item.type).includes(searchValue.value)
       );
     });
   } else {
@@ -242,7 +252,7 @@ const addWhiteList = async () => {
   }
 };
 const handleAddWhiteList = () => {
-  if (isLogin) {
+  if (isLogin.value) {
     addWhiteData.value.name = playerInfo.value.nickname;
     addWhiteData.value.player_uid = playerInfo.value.player_uid;
     addWhiteData.value.steam_id = playerInfo.value.steam_id;
@@ -267,7 +277,7 @@ const removeWhitelist = async (player) => {
 
 // 封禁、踢出
 const handelPlayerAction = async (type) => {
-  if (!isLogin) {
+  if (!isLogin.value) {
     message.error($t("message.requireauth"));
     showLoginModal.value = true;
     return;
@@ -304,7 +314,7 @@ const handelPlayerAction = async (type) => {
 // 获取白名单列表
 const whiteList = computed(() => whitelistStore().getWhitelist());
 const getWhiteList = async () => {
-  if (isLogin) {
+  if (isLogin.value) {
     const { data, statusCode } = await new ApiService().getWhitelist();
     if (statusCode.value === 200) {
       if (data.value) {
@@ -351,13 +361,23 @@ const getSkillTypeList = () => {
   }
 };
 const getPalAvatar = (name) => {
-  return new URL(`../../../assets/pal/${name}.png`, import.meta.url).href;
+  const lowerName = name.toLowerCase();
+  return new URL(`../../../assets/pals/${lowerName}.png`, import.meta.url).href;
+};
+const getPalName = (name) => {
+  const lowerName = name.toLowerCase();
+  return palMap[locale.value][lowerName]
+    ? palMap[locale.value][lowerName]
+    : name;
+};
+const getItemIcon = (id) => {
+  return new URL(`../../../assets/items/${id}.webp`, import.meta.url).href;
 };
 const getUnknowPalAvatar = (is_boss = false) => {
   if (is_boss) {
-    return new URL("@/assets/pal/BOSS_Unknown.png", import.meta.url).href;
+    return new URL("@/assets/pals/boss_unknown.png", import.meta.url).href;
   }
-  return new URL("@/assets/pal/Unknown.png", import.meta.url).href;
+  return new URL("@/assets/pals/unknown.png", import.meta.url).href;
 };
 const isPlayerOnline = (last_online) => {
   return dayjs() - dayjs(last_online) < 120000;
@@ -373,6 +393,72 @@ const percentageHP = (hp, max_hp) => {
   }
   return ((hp / max_hp) * 100).toFixed(2);
 };
+
+const mergedItems = ref({});
+const mergeItems = () => {
+  mergedItems.value = {};
+
+  if (!playerInfo.value.items) return;
+  for (const [containerId, items] of Object.entries(playerInfo.value.items)) {
+    mergedItems.value[containerId] = items.map((item) => {
+      const frontendItem = palItems[locale.value].find(
+        (frontItem) => frontItem.id === item.ItemId
+      );
+      if (frontendItem) {
+        return {
+          ...item,
+          id: frontendItem.id,
+          name: frontendItem.name,
+          iconPath: frontendItem.iconPath,
+          description: frontendItem.description,
+        };
+      } else {
+        const jaFrontendItem = palItems["ja"].find(
+          (frontItem) => frontItem.id === item.ItemId
+        );
+        return {
+          ...item,
+          id: item.ItemId,
+          name: item.ItemId,
+          iconPath: jaFrontendItem?.iconPath || "",
+          description: jaFrontendItem?.description || "",
+        };
+      }
+    });
+  }
+};
+
+const createPlayerItemsColumns = () => {
+  return [
+    {
+      title: "",
+      key: "",
+      render(row) {
+        return h(NAvatar, {
+          size: "small",
+          src: getItemIcon(row.id),
+          fallbackSrc: getUnknowPalAvatar(),
+        });
+      },
+    },
+    {
+      title: t("item.name"),
+      key: "name",
+    },
+    {
+      title: t("item.description"),
+      key: "description",
+      defaultSortOrder: "descend",
+    },
+    {
+      title: t("item.count"),
+      key: "StackCount",
+      width: 170,
+      defaultSortOrder: "descend",
+      sorter: "default",
+    },
+  ];
+};
 </script>
 
 <template>
@@ -386,7 +472,7 @@ const percentageHP = (hp, max_hp) => {
       <n-page-header>
         <n-grid :cols="6">
           <n-gi
-            v-for="status in Object.entries(playerInfo?.status_point)"
+            v-for="status in Object.entries(playerInfo?.status_point || {})"
             :key="status[0]"
           >
             <n-statistic :label="status[0]" :value="status[1]" />
@@ -510,29 +596,78 @@ const percentageHP = (hp, max_hp) => {
           }}</n-progress
         >
       </n-space>
-      <div class="w-full mt-5">
-        <n-input-group class="w-full flex justify-end">
-          <n-input
-            v-model:value="searchValue"
-            clearable
-            :placeholder="$t('input.searchPlaceholder')"
-            :on-clear="clearSearch"
-          />
-          <n-button type="primary" class="w-20" @click="clickSearch">
-            {{ $t("button.search") }}
-          </n-button>
-        </n-input-group>
+      <div class="mt-2">
+        <n-tabs type="line" size="large" animated>
+          <n-tab-pane :name="$t('item.palList')">
+            <div class="w-full mt-5">
+              <n-input-group class="w-full flex justify-end">
+                <n-input
+                  v-model:value="searchValue"
+                  clearable
+                  :placeholder="$t('input.searchPlaceholder')"
+                  :on-clear="clearSearch"
+                />
+                <n-button type="primary" class="w-20" @click="clickSearch">
+                  {{ $t("button.search") }}
+                </n-button>
+              </n-input-group>
+            </div>
+            <n-data-table
+              class="mt-2"
+              size="small"
+              :columns="createPlayerPalsColumns()"
+              :row-props="dataRowProps"
+              :data="currentPalsList"
+              :bordered="false"
+              striped
+              :pagination="paginationReactive"
+            />
+          </n-tab-pane>
+          <n-tab-pane :name="$t('item.itemList')">
+            <n-tabs type="segment" animated>
+              <n-tab-pane :name="$t('item.commonContainer')">
+                <n-data-table
+                  size="small"
+                  :columns="createPlayerItemsColumns()"
+                  :data="mergedItems['CommonContainerId']"
+                  :bordered="false"
+                  striped
+                  :pagination="paginationReactive"
+                />
+              </n-tab-pane>
+              <n-tab-pane :name="$t('item.essentialContainer')">
+                <n-data-table
+                  size="small"
+                  :columns="createPlayerItemsColumns()"
+                  :data="mergedItems['EssentialContainerId']"
+                  :bordered="false"
+                  striped
+                  :pagination="paginationReactive"
+                />
+              </n-tab-pane>
+              <n-tab-pane :name="$t('item.weaponContainer')">
+                <n-data-table
+                  size="small"
+                  :columns="createPlayerItemsColumns()"
+                  :data="mergedItems['WeaponLoadOutContainerId']"
+                  :bordered="false"
+                  striped
+                />
+              </n-tab-pane>
+              <n-tab-pane :name="$t('item.armorContainer')">
+                <n-data-table
+                  class="mt-1"
+                  size="small"
+                  :columns="createPlayerItemsColumns()"
+                  :data="mergedItems['PlayerEquipArmorContainerId']"
+                  :bordered="false"
+                  striped
+                />
+              </n-tab-pane>
+            </n-tabs>
+          </n-tab-pane>
+        </n-tabs>
       </div>
-      <n-data-table
-        class="mt-2"
-        size="small"
-        :columns="createPlayerPalsColumns()"
-        :row-props="dataRowProps"
-        :data="currentPalsList"
-        :bordered="false"
-        striped
-        :pagination="paginationReactive"
-      />
     </n-card>
     <!-- 加入白名单，封禁，踢出 -->
     <n-flex
@@ -615,11 +750,7 @@ const percentageHP = (hp, max_hp) => {
       </div>
     </template>
     <template #header>
-      {{
-        palMap[locale][palDetail.type]
-          ? palMap[locale][palDetail.type]
-          : palDetail.type
-      }}
+      {{ getPalName(palDetail.type) }}
     </template>
     <pal-detail :palDetail="palDetail"></pal-detail>
   </n-modal>
